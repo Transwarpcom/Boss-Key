@@ -81,6 +81,12 @@ class HotkeysPage(wx.Panel):
         auto_hide_sizer.Add(minutes_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 5)
         
         other_box_sizer.Add(auto_hide_sizer, 0, wx.ALL, 10)
+        
+        # 灰色文本提示
+        auto_hide_tip = wx.StaticText(self, label="当键盘和鼠标在指定时间内无操作时，将自动隐藏窗口")
+        auto_hide_tip.SetForegroundColour(wx.Colour(128, 128, 128))  # 灰色文本
+        other_box_sizer.Add(auto_hide_tip, 0, wx.ALL, 10)
+        
         sizer.Add(other_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         self.SetSizer(sizer)
