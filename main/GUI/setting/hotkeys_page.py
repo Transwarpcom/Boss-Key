@@ -61,11 +61,38 @@ class HotkeysPage(wx.Panel):
         
         sizer.Add(mouse_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
+        # 添加其他选项区域
+        other_box = wx.StaticBox(self, label="其他")
+        other_box_sizer = wx.StaticBoxSizer(other_box, wx.VERTICAL)
+        
+        # 自动隐藏选项
+        auto_hide_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.auto_hide_checkbox = wx.CheckBox(self, label="自动隐藏：")
+        self.auto_hide_checkbox.SetToolTip(wx.ToolTip("在无操作指定时间后自动隐藏窗口"))
+        auto_hide_sizer.Add(self.auto_hide_checkbox, 0, wx.ALIGN_CENTER_VERTICAL)
+        
+        # 自动隐藏时间输入框
+        self.auto_hide_time = wx.SpinCtrl(self, min=1, max=120, initial=5)
+        self.auto_hide_time.SetToolTip(wx.ToolTip("设置多少分钟无操作后自动隐藏"))
+        auto_hide_sizer.Add(self.auto_hide_time, 0, wx.LEFT, 10)
+        
+        # 分钟标签
+        minutes_label = wx.StaticText(self, label="分钟")
+        auto_hide_sizer.Add(minutes_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 5)
+        
+        other_box_sizer.Add(auto_hide_sizer, 0, wx.ALL, 10)
+        sizer.Add(other_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
+        
         self.SetSizer(sizer)
         
     def Bind_EVT(self):
         self.hide_show_btn.Bind(wx.EVT_BUTTON, self.OnRecordHideShow)
         self.close_btn.Bind(wx.EVT_BUTTON, self.OnRecordClose)
+        self.auto_hide_checkbox.Bind(wx.EVT_CHECKBOX, self.OnAutoHideToggle)
+        
+    def OnAutoHideToggle(self, e):
+        # 启用或禁用时间输入框
+        self.auto_hide_time.Enable(self.auto_hide_checkbox.GetValue())
         
     def SetData(self):
         self.hide_show_text.SetValue(Config.hide_hotkey)
@@ -74,6 +101,14 @@ class HotkeysPage(wx.Panel):
         self.side_button1_checkbox.SetValue(Config.side_button1_hide if hasattr(Config, 'side_button1_hide') else False)
         self.side_button2_checkbox.SetValue(Config.side_button2_hide if hasattr(Config, 'side_button2_hide') else False)
         
+        # 设置自动隐藏选项
+        auto_hide_enabled = Config.auto_hide_enabled if hasattr(Config, 'auto_hide_enabled') else False
+        self.auto_hide_checkbox.SetValue(auto_hide_enabled)
+        
+        auto_hide_time = Config.auto_hide_time if hasattr(Config, 'auto_hide_time') else 5
+        self.auto_hide_time.SetValue(auto_hide_time)
+        self.auto_hide_time.Enable(auto_hide_enabled)
+        
     def SaveData(self):
         Config.hide_hotkey = self.hide_show_text.GetValue()
         Config.close_hotkey = self.close_text.GetValue()
@@ -81,12 +116,19 @@ class HotkeysPage(wx.Panel):
         Config.side_button1_hide = self.side_button1_checkbox.GetValue()
         Config.side_button2_hide = self.side_button2_checkbox.GetValue()
         
+        # 保存自动隐藏设置
+        Config.auto_hide_enabled = self.auto_hide_checkbox.GetValue()
+        Config.auto_hide_time = self.auto_hide_time.GetValue()
+        
     def Reset(self):
         self.hide_show_text.SetValue("Ctrl+Q")
         self.close_text.SetValue("Win+Esc")
         self.middle_button_checkbox.SetValue(False)
         self.side_button1_checkbox.SetValue(False)
         self.side_button2_checkbox.SetValue(False)
+        self.auto_hide_checkbox.SetValue(False)
+        self.auto_hide_time.SetValue(5)
+        self.auto_hide_time.Enable(False)
         
     def OnRecordHideShow(self, e):
         self.recordHotkey(self.hide_show_text, self.hide_show_btn)
