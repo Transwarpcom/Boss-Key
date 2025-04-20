@@ -2,11 +2,13 @@ from core.config import Config
 import core.tools as tool
 from win32gui import GetForegroundWindow, ShowWindow
 from win32con import SW_HIDE, SW_SHOW
+import win32process
 import sys
 from pynput import keyboard
 import multiprocessing
 import threading
 import time
+import os
 import wx
 
 class HotkeyListener():
@@ -37,9 +39,10 @@ class HotkeyListener():
                     tool.sendNotify("Boss Key已停止服务", "Boss Key已成功退出")
                     self._stop()
                     try:
-                        wx.FindWindowById(Config.SettingWindowId).Destroy()
-                        Config.TaskBarIcon.Destroy()
-                        wx.FindWindowById(Config.UpdateWindowId).Destroy()
+                        wx.GetApp().ExitMainLoop()
+                        # wx.FindWindowById(Config.SettingWindowId).Destroy()
+                        # wx.FindWindowById(Config.UpdateWindowId).Destroy()
+                        # Config.TaskBarIcon.Destroy()
                     except Exception as e:
                         print(e)
                         pass
@@ -92,6 +95,16 @@ class HotkeyListener():
         # 显示窗口
         if load:
             Config.load()
+            
+        # 如果有冻结的进程，先解冻
+        if Config.freeze_after_hide and Config.frozen_pids:
+            for pid in Config.frozen_pids:
+                try:
+                    tool.resume_process(pid)
+                except Exception as e:
+                    print(f"解冻进程失败: {e}")
+            Config.frozen_pids = []
+            
         for i in Config.history:
             ShowWindow(i, SW_SHOW)
             if Config.mute_after_hide:
@@ -105,9 +118,10 @@ class HotkeyListener():
     
     def HideWindows(self):
         # 隐藏窗口
-
+        
         Config.load()
         needHide=[]
+        frozen_pids=[]
         windows=tool.getAllWindows()
         
         outer=windows
@@ -123,14 +137,30 @@ class HotkeyListener():
                 if tool.isSameWindow(i, j, False, not Config.path_match):
                     if outer==Config.hide_binding: # 此时i是绑定的元素，j是窗口元素，需要隐藏j
                         needHide.append(j.hwnd)
+                        if Config.freeze_after_hide and hasattr(j, 'PID') and j.PID:
+                            frozen_pids.append(j.PID)
                     else:
                         needHide.append(i.hwnd)
+                        if Config.freeze_after_hide and hasattr(i, 'PID') and i.PID:
+                            frozen_pids.append(i.PID)
                     break
 
         if Config.hide_current: # 插入当前窗口的句柄
-            needHide.append(GetForegroundWindow())
+            hwnd = GetForegroundWindow()
+            needHide.append(hwnd)
+            # 如果需要冻结进程，获取当前窗口的PID
+            if Config.freeze_after_hide:
+                try:
+                    pid = win32process.GetWindowThreadProcessId(hwnd)[1]
+                    current_pid = win32process.GetCurrentProcessId()  # 获取当前程序的PID
+                    if pid != current_pid and pid !=os.getpid():  # 如果当前窗口的pid与本程序的pid相同，则不冻结
+                        frozen_pids.append(pid)
+                except:
+                    pass
 
         needHide=tool.remove_duplicates(needHide) # 去重
+        frozen_pids=tool.remove_duplicates(frozen_pids) if Config.freeze_after_hide else [] # 去重
+        
         for i in needHide:
             if Config.send_before_hide:
                 time.sleep(0.2)
@@ -139,6 +169,15 @@ class HotkeyListener():
             ShowWindow(i, SW_HIDE)
             if Config.mute_after_hide:
                 tool.changeMute(i,1)
+                
+        # 冻结进程
+        if Config.freeze_after_hide and frozen_pids:
+            for pid in frozen_pids:
+                try:
+                    tool.suspend_process(pid)
+                except Exception as e:
+                    print(f"冻结进程失败: {e}")
+            Config.frozen_pids = frozen_pids
 
         Config.history=needHide
         Config.times = 0
