@@ -31,8 +31,17 @@ class APP(wx.App):
     def __init__(self):
         wx.App.__init__(self)
         def clean():
+            print("Global Cleaning up...")
+            try:
+                Config.HotkeyListener._cleanup()
+            except:
+                pass
             try:
                 Config.HotkeyListener.Close()
+            except:
+                pass
+            try:
+                os.remove(os.path.join(Config.root_path,"Boss-Key.lock"))
             except:
                 pass
         atexit.register(clean)
