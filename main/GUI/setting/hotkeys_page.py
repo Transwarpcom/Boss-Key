@@ -35,9 +35,6 @@ class HotkeysPage(wx.Panel):
         
         sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
-        # 添加说明文本
-        help_text = wx.StaticText(self, label="提示: 点击录制热键按钮后，按下您想要设置的热键组合，然后点击确定。")
-        sizer.Add(help_text, 0, wx.ALL, 20)
         
         self.SetSizer(sizer)
         

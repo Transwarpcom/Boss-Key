@@ -1,5 +1,9 @@
 import wx
+import wx.adv
+import webbrowser
 from core.config import Config
+import os
+from core.tools import check_pssuspend_exists, is_admin, run_as_admin
 
 class OptionsPage(wx.Panel):
     def __init__(self, parent):
@@ -11,7 +15,7 @@ class OptionsPage(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         
         # 创建网格布局
-        grid_sizer = wx.GridSizer(rows=3, cols=2, gap=(10, 20))
+        grid_sizer = wx.GridSizer(rows=3, cols=2, gap=(10, 20))  # 减少行数为3，冻结选项将单独放置
         
         # 添加复选框
         # 1. 隐藏窗口后静音
@@ -52,10 +56,54 @@ class OptionsPage(wx.Panel):
         
         sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 20)
         
+        # 创建一个StaticBox用于包含冻结相关的选项
+        freeze_box = wx.StaticBox(self, label="进程冻结选项")
+        freeze_box_sizer = wx.StaticBoxSizer(freeze_box, wx.VERTICAL)
+        
+        # 创建进程冻结选项
+        freeze_grid = wx.GridSizer(rows=2, cols=1, gap=(5, 5))
+        
+        # 7. 隐藏窗口时冻结进程
+        freeze_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.freeze_checkbox = wx.CheckBox(self, label="隐藏窗口时冻结进程(beta)")
+        freeze_tooltip = "启用此选项将在隐藏窗口时同时冻结其进程，减少CPU占用\n注意：某些程序可能对冻结操作反应异常"
+        self.freeze_checkbox.SetToolTip(wx.ToolTip(freeze_tooltip))
+        freeze_info_icon = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, wx.ART_OTHER, self.FromDIP((14, 14)))
+        freeze_info_bitmap = wx.StaticBitmap(self, bitmap=freeze_info_icon)
+        freeze_info_bitmap.SetToolTip(wx.ToolTip(freeze_tooltip))
+        freeze_sizer.Add(self.freeze_checkbox)
+        freeze_sizer.AddSpacer(5)
+        freeze_sizer.Add(freeze_info_bitmap)
+        freeze_grid.Add(freeze_sizer, 0, wx.ALL, 5)
+        
+        # 8. 增强冻结（使用pssuspend64）
+        enhanced_freeze_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.enhanced_freeze_checkbox = wx.CheckBox(self, label="使用增强冻结（需要pssuspend64.exe）")
+        enhanced_freeze_tooltip = "使用Microsoft的pssuspend64工具执行进程冻结操作，提供更稳定的冻结效果\n需要在程序根目录放置pssuspend64.exe文件并使用管理员身份启动BossKey"
+        self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip(enhanced_freeze_tooltip))
+        enhanced_freeze_info_icon = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, wx.ART_OTHER, self.FromDIP((14, 14)))
+        enhanced_freeze_info_bitmap = wx.StaticBitmap(self, bitmap=enhanced_freeze_info_icon)
+        enhanced_freeze_info_bitmap.SetToolTip(wx.ToolTip(enhanced_freeze_tooltip))
+        enhanced_freeze_sizer.Add(self.enhanced_freeze_checkbox)
+        enhanced_freeze_sizer.AddSpacer(5)
+        enhanced_freeze_sizer.Add(enhanced_freeze_info_bitmap)
+        freeze_grid.Add(enhanced_freeze_sizer, 0, wx.ALL, 5)
+        
+        freeze_box_sizer.Add(freeze_grid, 0, wx.ALL | wx.EXPAND, 5)
+        
+        # 添加一个下载链接
+        self.download_link = wx.adv.HyperlinkCtrl(self, -1, "下载 pssuspend64", 
+                                               "https://download.sysinternals.com/files/PSTools.zip")
+        freeze_box_sizer.Add(self.download_link, 0, wx.ALL, 10)
+        
+        sizer.Add(freeze_box_sizer, 0, wx.EXPAND | wx.ALL, 20)
+        
         self.SetSizer(sizer)
         
     def Bind_EVT(self):
         self.send_pause_checkbox.Bind(wx.EVT_CHECKBOX, self.OnSendBeforeHide)
+        self.freeze_checkbox.Bind(wx.EVT_CHECKBOX, self.OnFreezeAfterHide)
+        self.enhanced_freeze_checkbox.Bind(wx.EVT_CHECKBOX, self.OnEnhancedFreeze)
         
     def SetData(self):
         self.mute_checkbox.SetValue(Config.mute_after_hide)
@@ -64,6 +112,28 @@ class OptionsPage(wx.Panel):
         self.click_hide_checkbox.SetValue(Config.click_to_hide)
         self.hide_icon_checkbox.SetValue(Config.hide_icon_after_hide)
         self.path_match_checkbox.SetValue(Config.path_match)
+        self.freeze_checkbox.SetValue(Config.freeze_after_hide)
+        
+        # 设置增强冻结选项
+        if hasattr(Config, 'enhanced_freeze'):
+            self.enhanced_freeze_checkbox.SetValue(Config.enhanced_freeze)
+        else:
+            self.enhanced_freeze_checkbox.SetValue(False)
+        
+        # 检查pssuspend64是否存在和管理员权限
+        admin_status = is_admin()
+        has_pssuspend = check_pssuspend_exists()
+        
+        if not has_pssuspend:
+            self.enhanced_freeze_checkbox.SetValue(False)
+            self.enhanced_freeze_checkbox.Enable(False)
+            self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip("需要pssuspend64.exe才能启用此功能"))
+        elif not admin_status:
+            self.enhanced_freeze_checkbox.SetValue(False)
+            self.enhanced_freeze_checkbox.Enable(False)
+            self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip("需要管理员权限才能启用此功能"))
+        else:
+            self.enhanced_freeze_checkbox.Enable(True)
         
     def SaveData(self):
         Config.mute_after_hide = self.mute_checkbox.GetValue()
@@ -72,6 +142,8 @@ class OptionsPage(wx.Panel):
         Config.click_to_hide = self.click_hide_checkbox.GetValue()
         Config.hide_icon_after_hide = self.hide_icon_checkbox.GetValue()
         Config.path_match = self.path_match_checkbox.GetValue()
+        Config.freeze_after_hide = self.freeze_checkbox.GetValue()
+        Config.enhanced_freeze = self.enhanced_freeze_checkbox.GetValue()
         
     def Reset(self):
         self.mute_checkbox.SetValue(True)
@@ -80,7 +152,45 @@ class OptionsPage(wx.Panel):
         self.click_hide_checkbox.SetValue(False)
         self.hide_icon_checkbox.SetValue(False)
         self.path_match_checkbox.SetValue(False)
+        self.freeze_checkbox.SetValue(False)
+        self.enhanced_freeze_checkbox.SetValue(False)
         
     def OnSendBeforeHide(self, e):
         if self.send_pause_checkbox.GetValue():
             wx.MessageDialog(None, "隐藏窗口前向被隐藏的窗口发送空格，用于暂停视频等。启用此功能可能会延迟窗口的隐藏", "Boss Key", wx.OK | wx.ICON_INFORMATION).ShowModal()
+            
+    def OnFreezeAfterHide(self, e):
+        if self.freeze_checkbox.GetValue():
+            wx.MessageDialog(None, "隐藏窗口时将冻结进程，可以减少CPU占用但某些程序可能会出现异常。\n恢复窗口时会自动解冻进程。", "Boss Key", wx.OK | wx.ICON_INFORMATION).ShowModal()
+    
+    def OnEnhancedFreeze(self, e):
+        if self.enhanced_freeze_checkbox.GetValue():
+            # 检查pssuspend64是否存在
+            if not check_pssuspend_exists():
+                dlg = wx.MessageDialog(self, 
+                    "未检测到pssuspend64.exe文件！\n请先下载并放置到程序根目录，然后重新启用此选项。\n\n您可以从以下链接下载：\nhttps://download.sysinternals.com/files/PSTools.zip", 
+                    "无法启用增强冻结", wx.OK | wx.ICON_ERROR)
+                dlg.SetOKLabel("确定")
+                dlg.SetOKCancelLabels("确定", "下载")
+                result = dlg.ShowModal()
+                if result == wx.ID_CANCEL:
+                    webbrowser.open("https://download.sysinternals.com/files/PSTools.zip")
+                dlg.Destroy()
+                self.enhanced_freeze_checkbox.SetValue(False)
+                return
+                
+            # 检查管理员权限
+            if not is_admin():
+                result = wx.MessageDialog(None, "增强冻结功能需要管理员权限才能使用！\n是否以管理员身份重启程序？", 
+                                 "权限不足", wx.YES_NO | wx.ICON_WARNING).ShowModal()
+                self.enhanced_freeze_checkbox.SetValue(False)
+                
+                if result == wx.ID_YES:
+                    run_as_admin()
+                    wx.GetApp().GetTopWindow().Close()
+                return
+                
+            wx.MessageDialog(None, "增强冻结功能将使用Microsoft提供的pssuspend64工具，提供更稳定的进程冻结效果。\n此功能需要启用\"隐藏窗口时冻结进程\"选项才会生效。", 
+                            "增强冻结已启用", wx.OK | wx.ICON_INFORMATION).ShowModal()
+            # 自动勾选冻结进程选项
+            self.freeze_checkbox.SetValue(True)

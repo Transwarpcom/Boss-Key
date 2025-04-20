@@ -9,8 +9,107 @@ import datetime
 import requests
 import json
 import pythoncom
+import ctypes
+import os
+import subprocess
+from ctypes import wintypes
+import sys
 
 from core.model import WindowInfo
+
+# 定义 NtSuspendProcess 和 NtResumeProcess 的类型
+NtSuspendProcess = ctypes.WINFUNCTYPE(wintypes.LONG, wintypes.HANDLE)
+NtResumeProcess = ctypes.WINFUNCTYPE(wintypes.LONG, wintypes.HANDLE)
+
+# 加载 ntdll.dll
+ntdll = ctypes.WinDLL("ntdll")
+nt_suspend_process = NtSuspendProcess(("NtSuspendProcess", ntdll))
+nt_resume_process = NtResumeProcess(("NtResumeProcess", ntdll))
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def run_as_admin():
+    if is_admin():
+        print("Already running as administrator.")
+    else:
+        print("Requesting administrator privileges...")
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+
+# 检查pssuspend64是否存在
+def check_pssuspend_exists():
+    """检查pssuspend64.exe是否在程序根目录下存在"""
+    pssuspend_path =os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+    return os.path.exists(pssuspend_path)
+
+# 使用pssuspend64冻结进程
+def suspend_process_enhanced(pid):
+    """使用pssuspend64.exe冻结指定PID的进程"""
+    try:
+        pssuspend_path = os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+        result = subprocess.run([pssuspend_path, str(pid)], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE,
+                               text=True,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
+        if result.returncode != 0:
+            raise RuntimeError(f"pssuspend64执行失败: {result.stderr}")
+    except Exception as e:
+        raise RuntimeError(f"无法使用pssuspend64冻结进程: {str(e)}")
+
+# 使用pssuspend64解冻进程
+def resume_process_enhanced(pid):
+    """使用pssuspend64.exe解冻指定PID的进程"""
+    try:
+        pssuspend_path = os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+        result = subprocess.run([pssuspend_path, "-r", str(pid)], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE,
+                               text=True,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
+        if result.returncode != 0:
+            raise RuntimeError(f"pssuspend64执行失败: {result.stderr}")
+    except Exception as e:
+        raise RuntimeError(f"无法使用pssuspend64解冻进程: {str(e)}")
+
+# 冻结进程 (Suspend Process)
+def suspend_process(pid):
+    """冻结指定PID的进程"""
+    # 如果启用了增强冻结且pssuspend64存在，则使用pssuspend64
+    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists():
+        return suspend_process_enhanced(pid)
+    
+    process_handle = ctypes.windll.kernel32.OpenProcess(0x001F0FFF, False, pid)  # PROCESS_ALL_ACCESS
+    if not process_handle:
+        raise RuntimeError(f"无法打开进程，PID: {pid}")
+    
+    try:
+        nt_status = nt_suspend_process(process_handle)
+        if nt_status != 0:
+            raise RuntimeError(f"NtSuspendProcess 调用失败，状态码: {nt_status}")
+    finally:
+        ctypes.windll.kernel32.CloseHandle(process_handle)
+
+# 解冻进程 (Resume Process)
+def resume_process(pid):
+    """解冻指定PID的进程"""
+    # 如果启用了增强冻结且pssuspend64存在，则使用pssuspend64
+    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists():
+        return resume_process_enhanced(pid)
+    
+    process_handle = ctypes.windll.kernel32.OpenProcess(0x001F0FFF, False, pid)  # PROCESS_ALL_ACCESS
+    if not process_handle:
+        raise RuntimeError(f"无法打开进程，PID: {pid}")
+    
+    try:
+        nt_status = nt_resume_process(process_handle)
+        if nt_status != 0:
+            raise RuntimeError(f"NtResumeProcess 调用失败，状态码: {nt_status}")
+    finally:
+        ctypes.windll.kernel32.CloseHandle(process_handle)
 
 def checkUpdate():
     requests.packages.urllib3.disable_warnings()
