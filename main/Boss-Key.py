@@ -19,6 +19,7 @@ import wx
 from core.config import Config
 import platform
 import atexit
+from GUI.setting.base import SettingWindow
 
 if platform.system() == "Windows":
     if platform.release() == "7":
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     Config.SettingWindowId = wx.NewIdRef()
     Config.TaskBarIcon=taskbar.TaskBarIcon()
     Config.HotkeyListener=listener.HotkeyListener()
-    setting.SettingWindow(Config.SettingWindowId)
+    SettingWindow(Config.SettingWindowId)
     if Config.first_start:
         wx.FindWindowById(Config.SettingWindowId).Show()
     app.MainLoop()
