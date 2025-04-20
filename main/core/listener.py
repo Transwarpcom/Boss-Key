@@ -4,7 +4,7 @@ from win32gui import GetForegroundWindow, ShowWindow
 from win32con import SW_HIDE, SW_SHOW
 import win32process
 import sys
-from pynput import keyboard
+from pynput import keyboard, mouse  # 确保导入mouse模块
 import multiprocessing
 import threading
 import time
@@ -20,6 +20,7 @@ class HotkeyListener():
         tool.sendNotify("Boss Key正在运行！", "Boss Key正在为您服务，您可通过托盘图标看到我")
         self.Queue = multiprocessing.Queue()
         self.listener = None
+        self.mouse_listener = None  # 添加鼠标监听器变量
         self.reBind()
         self.end_flag=False
         threading.Thread(target=self.listenToQueue,daemon=True).start()
@@ -57,7 +58,28 @@ class HotkeyListener():
     def reBind(self):
         self._stop()
         self.BindHotKey()
-    
+        # 如果启用了任何鼠标按键隐藏，则添加鼠标监听
+        if (hasattr(Config, 'middle_button_hide') and Config.middle_button_hide) or \
+           (hasattr(Config, 'side_button1_hide') and Config.side_button1_hide) or \
+           (hasattr(Config, 'side_button2_hide') and Config.side_button2_hide):
+            self.start_mouse_listener()
+            
+    def start_mouse_listener(self):
+        """启动鼠标监听器"""
+        if self.mouse_listener is None or not self.mouse_listener.is_alive():
+            self.mouse_listener = mouse.Listener(on_click=self.on_mouse_click)
+            self.mouse_listener.daemon = True
+            self.mouse_listener.start()
+            
+    def on_mouse_click(self, x, y, button, pressed):
+        """鼠标点击事件处理"""
+        if pressed:  # 只在按下时触发，不在松开时触发
+            if (button == mouse.Button.middle and Config.middle_button_hide) or \
+               (button == mouse.Button.x1 and Config.side_button1_hide) or \
+               (button == mouse.Button.x2 and Config.side_button2_hide):
+                # 在主线程中执行onHide
+                wx.CallAfter(self.onHide)
+
     def ListenerProcess(self,hotkey):
         try:
             with keyboard.GlobalHotKeys(hotkey) as listener:
@@ -201,3 +223,11 @@ class HotkeyListener():
                 pass
             finally:
                 self.listener = None
+                
+        # 停止鼠标监听器
+        if hasattr(self, 'mouse_listener') and self.mouse_listener is not None:
+            try:
+                self.mouse_listener.stop()
+                self.mouse_listener = None
+            except:
+                pass
