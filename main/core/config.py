@@ -53,6 +53,11 @@ SOFTWARE.
     click_to_hide = True
     hide_icon_after_hide = False
     path_match = True
+    middle_button_hide = False  # 新增：鼠标中键隐藏功能开关
+    side_button1_hide = False   # 鼠标侧键1隐藏功能开关
+    side_button2_hide = False   # 鼠标侧键2隐藏功能开关
+    auto_hide_enabled = False   # 自动隐藏功能开关
+    auto_hide_time = 5          # 自动隐藏等待时间(分钟)
 
     hide_binding = []
     
@@ -97,6 +102,11 @@ SOFTWARE.
         Config.path_match = config.get("setting", {}).get("path_match", False)
         Config.freeze_after_hide = config.get("setting", {}).get("freeze_after_hide", False)  # 加载新配置项
         Config.enhanced_freeze = config.get("setting", {}).get("enhanced_freeze", False)  # 加载新配置项
+        Config.middle_button_hide = config.get("setting", {}).get("middle_button_hide", False)  # 加载鼠标中键隐藏设置
+        Config.side_button1_hide = config.get("setting", {}).get("side_button1_hide", False)  # 加载鼠标侧键1隐藏设置
+        Config.side_button2_hide = config.get("setting", {}).get("side_button2_hide", False)  # 加载鼠标侧键2隐藏设置
+        Config.auto_hide_enabled = config.get("setting", {}).get("auto_hide_enabled", False)  # 加载自动隐藏功能开关
+        Config.auto_hide_time = config.get("setting", {}).get("auto_hide_time", 5)  # 加载自动隐藏等待时间
         
         Config.click_to_hide= config.get("setting", {}).get("click_to_hide", True)
 
@@ -128,7 +138,12 @@ SOFTWARE.
                 'hide_icon_after_hide': Config.hide_icon_after_hide,
                 'path_match': Config.path_match,
                 'freeze_after_hide': Config.freeze_after_hide,  # 保存新配置项
-                'enhanced_freeze': Config.enhanced_freeze  # 保存新配置项
+                'enhanced_freeze': Config.enhanced_freeze,  # 保存新配置项
+                'middle_button_hide': Config.middle_button_hide,  # 保存鼠标中键隐藏设置
+                'side_button1_hide': Config.side_button1_hide,  # 保存鼠标侧键1隐藏设置
+                'side_button2_hide': Config.side_button2_hide,  # 保存鼠标侧键2隐藏设置
+                'auto_hide_enabled': Config.auto_hide_enabled,  # 保存自动隐藏功能开关
+                'auto_hide_time': Config.auto_hide_time  # 保存自动隐藏等待时间
             },
             # 将WindowInfo对象列表转换为字典列表用于JSON序列化
             "hide_binding": [item.to_dict() if isinstance(item, WindowInfo) else item for item in Config.hide_binding]

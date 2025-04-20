@@ -36,8 +36,8 @@ class SettingWindow(wx.Frame):
         
         # 创建按钮
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.reset_btn = wx.Button(panel, label="重置设置")
-        self.save_btn = wx.Button(panel, label="保存设置")
+        self.reset_btn = wx.Button(panel, label="重置设置", size=(-1, 50))
+        self.save_btn = wx.Button(panel, label="保存设置", size=(-1, 50))
         button_sizer.Add(self.reset_btn, proportion=1, flag=wx.LEFT, border=20)
         button_sizer.Add(self.save_btn, proportion=1, flag=wx.RIGHT, border=20)
         

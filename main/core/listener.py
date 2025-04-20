@@ -4,7 +4,7 @@ from win32gui import GetForegroundWindow, ShowWindow
 from win32con import SW_HIDE, SW_SHOW
 import win32process
 import sys
-from pynput import keyboard
+from pynput import keyboard, mouse  # 确保导入mouse模块
 import multiprocessing
 import threading
 import time
@@ -13,16 +13,29 @@ import wx
 
 class HotkeyListener():
     def __init__(self):
+        # 先定义所有属性
+        self.Queue = multiprocessing.Queue()
+        self.listener = None
+        self.mouse_listener = None
+        self.keyboard_activity_listener = None
+        self.mouse_activity_listener = None
+        self.last_activity_time = time.time()
+        self.auto_hide_timer = None
+        self.shared_state_file = os.path.join(Config.root_path, ".bosskey_state")
+        self.end_flag = False
+        
+        # 然后再执行可能使用这些属性的方法
         try:
             self.ShowWindows()
         except:
             pass
         tool.sendNotify("Boss Key正在运行！", "Boss Key正在为您服务，您可通过托盘图标看到我")
-        self.Queue = multiprocessing.Queue()
-        self.listener = None
+        
         self.reBind()
-        self.end_flag=False
-        threading.Thread(target=self.listenToQueue,daemon=True).start()
+        threading.Thread(target=self.listenToQueue, daemon=True).start()
+        
+        # 启动自动隐藏监控（如果启用）
+        self.start_auto_hide_monitor()
 
     def listenToQueue(self):
         exit_flag = False
@@ -40,9 +53,6 @@ class HotkeyListener():
                     self._stop()
                     try:
                         wx.GetApp().ExitMainLoop()
-                        # wx.FindWindowById(Config.SettingWindowId).Destroy()
-                        # wx.FindWindowById(Config.UpdateWindowId).Destroy()
-                        # Config.TaskBarIcon.Destroy()
                     except Exception as e:
                         print(e)
                         pass
@@ -57,8 +67,113 @@ class HotkeyListener():
     def reBind(self):
         self._stop()
         self.BindHotKey()
-    
-    def ListenerProcess(self,hotkey):
+        # 如果启用了任何鼠标按键隐藏，则添加鼠标监听
+        if (hasattr(Config, 'middle_button_hide') and Config.middle_button_hide) or \
+           (hasattr(Config, 'side_button1_hide') and Config.side_button1_hide) or \
+           (hasattr(Config, 'side_button2_hide') and Config.side_button2_hide):
+            self.start_mouse_listener()
+        
+        # 启动自动隐藏监控（如果启用）
+        self.start_auto_hide_monitor()
+        
+    def start_auto_hide_monitor(self):
+        """启动自动隐藏监控"""
+        # 停止之前的监控
+        self.stop_auto_hide_monitor()
+        
+        # 检查是否启用了自动隐藏
+        if hasattr(Config, 'auto_hide_enabled') and Config.auto_hide_enabled:
+            # 启动活动监听器
+            self.start_activity_listeners()
+            
+            # 启动定时器，每5秒检查一次是否需要自动隐藏
+            self.auto_hide_timer = threading.Timer(5, self.check_auto_hide)
+            self.auto_hide_timer.daemon = True
+            self.auto_hide_timer.start()
+            
+    def stop_auto_hide_monitor(self):
+        """停止自动隐藏监控"""
+        # 停止定时器
+        if self.auto_hide_timer:
+            self.auto_hide_timer.cancel()
+            self.auto_hide_timer = None
+            
+        # 停止活动监听器
+        self.stop_activity_listeners()
+            
+    def start_activity_listeners(self):
+        """启动键盘和鼠标活动监听器"""
+        # 停止之前的监听器
+        self.stop_activity_listeners()
+        
+        # 启动键盘活动监听器
+        self.keyboard_activity_listener = keyboard.Listener(on_press=self.on_activity)
+        self.keyboard_activity_listener.daemon = True
+        self.keyboard_activity_listener.start()
+        
+        # 启动鼠标活动监听器
+        self.mouse_activity_listener = mouse.Listener(
+            on_move=self.on_activity,
+            on_click=self.on_activity,
+            on_scroll=self.on_activity
+        )
+        self.mouse_activity_listener.daemon = True
+        self.mouse_activity_listener.start()
+        
+    def stop_activity_listeners(self):
+        """停止键盘和鼠标活动监听器"""
+        if self.keyboard_activity_listener:
+            self.keyboard_activity_listener.stop()
+            self.keyboard_activity_listener = None
+            
+        if self.mouse_activity_listener:
+            self.mouse_activity_listener.stop()
+            self.mouse_activity_listener = None
+            
+    def on_activity(self, *args, **kwargs):
+        """记录最后一次活动时间"""
+        self.last_activity_time = time.time()
+        
+    def check_auto_hide(self):
+        """检查是否需要自动隐藏"""
+        try:
+            # 重新加载配置
+            if hasattr(Config, 'auto_hide_enabled') and Config.auto_hide_enabled:
+                # 计算闲置时间（秒）
+                idle_time = time.time() - self.last_activity_time
+                # 转换自动隐藏时间为秒
+                auto_hide_seconds = Config.auto_hide_time * 60
+                
+                # 如果闲置时间超过设定的自动隐藏时间，且窗口当前是显示状态
+                if idle_time >= auto_hide_seconds and self.get_windows_state() == 1:
+                    # 执行隐藏操作，修复了这里的错误调用
+                    wx.CallAfter(self.onHide)
+        
+        finally:
+            # 如果仍然启用了自动隐藏，则设置下一次检查
+            if hasattr(Config, 'auto_hide_enabled') and Config.auto_hide_enabled:
+                self.auto_hide_timer = threading.Timer(5, self.check_auto_hide)
+                self.auto_hide_timer.daemon = True
+                self.auto_hide_timer.start()
+            
+    def start_mouse_listener(self):
+        """启动鼠标监听器"""
+        if self.mouse_listener is None or not self.mouse_listener.is_alive():
+            self.mouse_listener = mouse.Listener(on_click=self.on_mouse_click)
+            self.mouse_listener.daemon = True
+            self.mouse_listener.start()
+            
+    def on_mouse_click(self, x, y, button, pressed):
+        """鼠标点击事件处理"""
+        if pressed:  # 只在按下时触发，不在松开时触发
+            if (button == mouse.Button.middle and Config.middle_button_hide) or \
+               (button == mouse.Button.x1 and Config.side_button1_hide) or \
+               (button == mouse.Button.x2 and Config.side_button2_hide):
+                # 在主线程中执行onHide
+                wx.CallAfter(self.onHide)
+
+    def ListenerProcess(self, hotkey):
+        """键盘热键监听进程"""
         try:
             with keyboard.GlobalHotKeys(hotkey) as listener:
                 self.end_flag = False
@@ -71,7 +186,8 @@ class HotkeyListener():
                     
                 print("热键监听已停止")
         except Exception as e:
-            self.ShowWindows(False)
+            # 热键监听出错时尝试恢复窗口
+            self.set_windows_state(1)  # 强制设置状态为显示
             print(f"热键监听出错: {e}")
 
     def BindHotKey(self):
@@ -81,18 +197,42 @@ class HotkeyListener():
         }
         hotkeys = tool.keyConvert(hotkeys)
                 
-        self.listener = multiprocessing.Process(target=self.ListenerProcess,daemon=True,args=(hotkeys,),name="Boss-Key热键监听进程")
+        self.listener = multiprocessing.Process(target=self.ListenerProcess, daemon=True, args=(hotkeys,), name="Boss-Key热键监听进程")
         self.listener.start()
 
-    def onHide(self,e=""):
-        if Config.times == 1:
+    def get_windows_state(self):
+        """获取窗口状态，1=显示，0=隐藏"""
+        try:
+            if os.path.exists(self.shared_state_file):
+                with open(self.shared_state_file, 'r') as f:
+                    return int(f.read().strip() or '1')
+            return 1  # 默认状态为显示
+        except:
+            return 1  # 出错时默认状态为显示
+            
+    def set_windows_state(self, state):
+        """设置窗口状态，1=显示，0=隐藏"""
+        try:
+            with open(self.shared_state_file, 'w') as f:
+                f.write(str(state))
+            Config.times = state  # 同时更新内存中的状态
+        except Exception as e:
+            print(f"设置窗口状态失败: {e}")
+
+    def onHide(self, e=""):
+        """根据当前状态切换窗口显示/隐藏"""
+        # 从共享状态文件获取当前状态
+        current_state = self.get_windows_state()
+        
+        if current_state == 1:
             # 隐藏窗口
             self.HideWindows()
         else:
+            # 显示窗口
             self.ShowWindows()
 
-    def ShowWindows(self,load=True):
-        # 显示窗口
+    def ShowWindows(self, load=True):
+        """显示之前隐藏的窗口"""
         if load:
             Config.load()
             
@@ -108,34 +248,34 @@ class HotkeyListener():
         for i in Config.history:
             ShowWindow(i, SW_SHOW)
             if Config.mute_after_hide:
-                tool.changeMute(i,0)
+                tool.changeMute(i, 0)
 
         if Config.hide_icon_after_hide:
             self.Queue.put("showTaskBarIcon")
                 
-        Config.times = 1
+        # 更新状态
+        self.set_windows_state(1)
         Config.save()
     
     def HideWindows(self):
-        # 隐藏窗口
-        
+        """隐藏指定的窗口"""
         Config.load()
-        needHide=[]
-        frozen_pids=[]
-        windows=tool.getAllWindows()
+        needHide = []
+        frozen_pids = []
+        windows = tool.getAllWindows()
         
-        outer=windows
-        inner=Config.hide_binding
+        outer = windows
+        inner = Config.hide_binding
 
-        #减少循环次数，选择相对较少的做外循环
+        # 减少循环次数，选择相对较少的做外循环
         if len(Config.hide_binding) < len(windows):
-            outer=Config.hide_binding
-            inner=windows
+            outer = Config.hide_binding
+            inner = windows
 
         for i in outer:
             for j in inner:
                 if tool.isSameWindow(i, j, False, not Config.path_match):
-                    if outer==Config.hide_binding: # 此时i是绑定的元素，j是窗口元素，需要隐藏j
+                    if outer == Config.hide_binding:  # 此时i是绑定的元素，j是窗口元素，需要隐藏j
                         needHide.append(j.hwnd)
                         if Config.freeze_after_hide and hasattr(j, 'PID') and j.PID:
                             frozen_pids.append(j.PID)
@@ -145,7 +285,7 @@ class HotkeyListener():
                             frozen_pids.append(i.PID)
                     break
 
-        if Config.hide_current: # 插入当前窗口的句柄
+        if Config.hide_current:  # 插入当前窗口的句柄
             hwnd = GetForegroundWindow()
             needHide.append(hwnd)
             # 如果需要冻结进程，获取当前窗口的PID
@@ -153,13 +293,13 @@ class HotkeyListener():
                 try:
                     pid = win32process.GetWindowThreadProcessId(hwnd)[1]
                     current_pid = win32process.GetCurrentProcessId()  # 获取当前程序的PID
-                    if pid != current_pid and pid !=os.getpid():  # 如果当前窗口的pid与本程序的pid相同，则不冻结
+                    if pid != current_pid and pid != os.getpid():  # 如果当前窗口的pid与本程序的pid相同，则不冻结
                         frozen_pids.append(pid)
                 except:
                     pass
 
-        needHide=tool.remove_duplicates(needHide) # 去重
-        frozen_pids=tool.remove_duplicates(frozen_pids) if Config.freeze_after_hide else [] # 去重
+        needHide = tool.remove_duplicates(needHide)  # 去重
+        frozen_pids = tool.remove_duplicates(frozen_pids) if Config.freeze_after_hide else []  # 去重
         
         for i in needHide:
             if Config.send_before_hide:
@@ -168,7 +308,7 @@ class HotkeyListener():
                 
             ShowWindow(i, SW_HIDE)
             if Config.mute_after_hide:
-                tool.changeMute(i,1)
+                tool.changeMute(i, 1)
                 
         # 冻结进程
         if Config.freeze_after_hide and frozen_pids:
@@ -179,13 +319,14 @@ class HotkeyListener():
                     print(f"冻结进程失败: {e}")
             Config.frozen_pids = frozen_pids
 
-        Config.history=needHide
-        Config.times = 0
+        Config.history = needHide
+        # 更新状态
+        self.set_windows_state(0)
         if Config.hide_icon_after_hide:
             self.Queue.put("hideTaskBarIcon")
         Config.save()
 
-    def Close(self,e=""):
+    def Close(self, e=""):
         self.Queue.put("closeApp")
     
     def _stop(self):
@@ -193,7 +334,7 @@ class HotkeyListener():
         直接关闭listener，应该使用Close
         """
         if self.listener is not None:
-            self.end_flag=True 
+            self.end_flag = True 
             try:
                 self.listener.terminate()
                 self.listener.join()
@@ -201,3 +342,24 @@ class HotkeyListener():
                 pass
             finally:
                 self.listener = None
+                
+        # 停止鼠标监听器
+        if hasattr(self, 'mouse_listener') and self.mouse_listener is not None:
+            try:
+                self.mouse_listener.stop()
+                self.mouse_listener = None
+            except:
+                pass
+                
+        # 停止自动隐藏监控
+        self.stop_auto_hide_monitor()
+        self._cleanup()
+        
+    def _cleanup(self):
+        # 清理状态文件
+        try:
+            if hasattr(self, 'shared_state_file') and os.path.exists(self.shared_state_file):
+                os.remove(self.shared_state_file)
+                print("已清理状态文件")
+        except Exception as e:
+            print(f"清理状态文件失败: {e}")

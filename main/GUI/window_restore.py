@@ -2,7 +2,9 @@ import wx
 import wx.dataview as dataview
 import win32gui
 import win32con
+import win32process
 import webbrowser
+import psutil
 from core import tools as tool
 from core.model import WindowInfo
 from core.config import Config
@@ -84,11 +86,26 @@ class WindowRestorePanel(BindingPage):
             self.Layout()
 
     def RefreshLeftList(self, e=None):
-        windows = tool.getAllWindows()
-        list = []
-        for window in windows:
-            list.append(window)
-        self.InsertTreeList(list, self.left_treelist, True)
+        def enumHandler(hwnd, windows):
+            title = tool.hwnd2windowName(hwnd)
+            
+            pid = win32process.GetWindowThreadProcessId(hwnd)[1]
+            process_name = psutil.Process(pid).name()
+            process_path = psutil.Process(pid).exe()
+            
+            windows.append(WindowInfo(
+                title=title, 
+                hwnd=int(hwnd), 
+                process=process_name, 
+                PID=int(pid), 
+                path=process_path
+            ))
+            return True
+
+        windows = []
+        win32gui.EnumWindows(enumHandler, windows)
+        windows.sort(key=lambda x: x.title)
+        self.InsertTreeList(windows, self.left_treelist, True)
         
     def on_refresh_window(self, e=None):
         """刷新窗口列表"""

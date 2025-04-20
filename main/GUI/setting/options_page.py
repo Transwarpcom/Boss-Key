@@ -226,7 +226,7 @@ class OptionsPage(wx.Panel):
         """请求管理员权限并重启程序"""
         wx.MessageBox("程序将重启并请求管理员权限", "提示", wx.OK | wx.ICON_INFORMATION)
         run_as_admin()
-        wx.GetApp().GetTopWindow().Close()
+        wx.GetApp().ExitMainLoop()
         
     def OnRedetectPssuspend(self, e=None):
         """重新检测pssuspend64.exe是否存在"""
