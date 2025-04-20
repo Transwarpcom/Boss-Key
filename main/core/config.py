@@ -56,9 +56,11 @@ SOFTWARE.
 
     hide_binding = []
     
-    config_path = os.path.join(os.getcwd(), "config.json")
-    icon=BytesIO(get_icon())
+    root_path = os.path.dirname(sys.argv[0])
+    config_path = os.path.join(root_path, "config.json")
     file_path=sys.argv[0]
+
+    icon=BytesIO(get_icon())
     # 判断是否为首次启动
     first_start = not os.path.exists(config_path)
 

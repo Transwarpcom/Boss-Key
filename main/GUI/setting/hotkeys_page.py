@@ -35,7 +35,6 @@ class HotkeysPage(wx.Panel):
         
         sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
-        
         self.SetSizer(sizer)
         
     def Bind_EVT(self):

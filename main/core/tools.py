@@ -42,14 +42,14 @@ def run_as_admin():
 # 检查pssuspend64是否存在
 def check_pssuspend_exists():
     """检查pssuspend64.exe是否在程序根目录下存在"""
-    pssuspend_path =os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+    pssuspend_path =os.path.join(Config.root_path,"pssuspend64.exe")
     return os.path.exists(pssuspend_path)
 
 # 使用pssuspend64冻结进程
 def suspend_process_enhanced(pid):
     """使用pssuspend64.exe冻结指定PID的进程"""
     try:
-        pssuspend_path = os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+        pssuspend_path = os.path.join(Config.root_path,"pssuspend64.exe")
         result = subprocess.run([pssuspend_path, str(pid)], 
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE,
@@ -64,7 +64,7 @@ def suspend_process_enhanced(pid):
 def resume_process_enhanced(pid):
     """使用pssuspend64.exe解冻指定PID的进程"""
     try:
-        pssuspend_path = os.path.join(os.path.dirname(sys.argv[0]),"pssuspend64.exe")
+        pssuspend_path = os.path.join(Config.root_path,"pssuspend64.exe")
         result = subprocess.run([pssuspend_path, "-r", str(pid)], 
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE,
@@ -79,7 +79,7 @@ def resume_process_enhanced(pid):
 def suspend_process(pid):
     """冻结指定PID的进程"""
     # 如果启用了增强冻结且pssuspend64存在，则使用pssuspend64
-    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists():
+    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists() and is_admin():
         return suspend_process_enhanced(pid)
     
     process_handle = ctypes.windll.kernel32.OpenProcess(0x001F0FFF, False, pid)  # PROCESS_ALL_ACCESS
@@ -97,7 +97,7 @@ def suspend_process(pid):
 def resume_process(pid):
     """解冻指定PID的进程"""
     # 如果启用了增强冻结且pssuspend64存在，则使用pssuspend64
-    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists():
+    if hasattr(Config, 'enhanced_freeze') and Config.enhanced_freeze and check_pssuspend_exists() and is_admin():
         return resume_process_enhanced(pid)
     
     process_handle = ctypes.windll.kernel32.OpenProcess(0x001F0FFF, False, pid)  # PROCESS_ALL_ACCESS

@@ -15,6 +15,10 @@ class OptionsPage(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         
         # 创建网格布局
+        # 创建一个StaticBox用于包含常规选项
+        general_box = wx.StaticBox(self, label="常规选项")
+        general_box_sizer = wx.StaticBoxSizer(general_box, wx.VERTICAL)
+        
         grid_sizer = wx.GridSizer(rows=3, cols=2, gap=(10, 20))  # 减少行数为3，冻结选项将单独放置
         
         # 添加复选框
@@ -54,7 +58,8 @@ class OptionsPage(wx.Panel):
         path_sizer.Add(info_bitmap)
         grid_sizer.Add(path_sizer, 0, wx.ALL, 10)
         
-        sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 20)
+        general_box_sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
+        sizer.Add(general_box_sizer, 0, wx.EXPAND | wx.ALL, 20)
         
         # 创建一个StaticBox用于包含冻结相关的选项
         freeze_box = wx.StaticBox(self, label="进程冻结选项")
@@ -78,7 +83,7 @@ class OptionsPage(wx.Panel):
         
         # 8. 增强冻结（使用pssuspend64）
         enhanced_freeze_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.enhanced_freeze_checkbox = wx.CheckBox(self, label="使用增强冻结（需要pssuspend64.exe）")
+        self.enhanced_freeze_checkbox = wx.CheckBox(self, label="使用增强冻结（需要pssuspend64.exe与管理员权限）")
         enhanced_freeze_tooltip = "使用Microsoft的pssuspend64工具执行进程冻结操作，提供更稳定的冻结效果\n需要在程序根目录放置pssuspend64.exe文件并使用管理员身份启动BossKey"
         self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip(enhanced_freeze_tooltip))
         enhanced_freeze_info_icon = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, wx.ART_OTHER, self.FromDIP((14, 14)))
@@ -91,10 +96,27 @@ class OptionsPage(wx.Panel):
         
         freeze_box_sizer.Add(freeze_grid, 0, wx.ALL | wx.EXPAND, 5)
         
-        # 添加一个下载链接
-        self.download_link = wx.adv.HyperlinkCtrl(self, -1, "下载 pssuspend64", 
-                                               "https://download.sysinternals.com/files/PSTools.zip")
-        freeze_box_sizer.Add(self.download_link, 0, wx.ALL, 10)
+        # 添加下载链接和功能按钮
+        link_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        
+        # 下载链接
+        self.download_link = wx.adv.HyperlinkCtrl(self, -1, "下载 pssuspend64", "https://download.sysinternals.com/files/PSTools.zip")
+        link_buttons_sizer.Add(self.download_link, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        
+        # 添加空白间距
+        link_buttons_sizer.AddSpacer(20)
+        
+        # 重新检测按钮
+        self.redetect_btn = wx.Button(self, label="重新检测", size=(-1, -1))
+        link_buttons_sizer.Add(self.redetect_btn, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        
+        # 管理员权限按钮
+        if not is_admin():
+            link_buttons_sizer.AddSpacer(10)
+            self.admin_btn = wx.Button(self, label="以管理员身份启动", size=(-1, -1))
+            link_buttons_sizer.Add(self.admin_btn, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        
+        freeze_box_sizer.Add(link_buttons_sizer, 0, wx.ALL, 10)
         
         sizer.Add(freeze_box_sizer, 0, wx.EXPAND | wx.ALL, 20)
         
@@ -104,6 +126,11 @@ class OptionsPage(wx.Panel):
         self.send_pause_checkbox.Bind(wx.EVT_CHECKBOX, self.OnSendBeforeHide)
         self.freeze_checkbox.Bind(wx.EVT_CHECKBOX, self.OnFreezeAfterHide)
         self.enhanced_freeze_checkbox.Bind(wx.EVT_CHECKBOX, self.OnEnhancedFreeze)
+        
+        # 绑定新按钮事件
+        self.redetect_btn.Bind(wx.EVT_BUTTON, self.OnRedetectPssuspend)
+        if not is_admin():
+            self.admin_btn.Bind(wx.EVT_BUTTON, self.OnRequestAdmin)
         
     def SetData(self):
         self.mute_checkbox.SetValue(Config.mute_after_hide)
@@ -194,3 +221,44 @@ class OptionsPage(wx.Panel):
                             "增强冻结已启用", wx.OK | wx.ICON_INFORMATION).ShowModal()
             # 自动勾选冻结进程选项
             self.freeze_checkbox.SetValue(True)
+    
+    def OnRequestAdmin(self, e=None):
+        """请求管理员权限并重启程序"""
+        wx.MessageBox("程序将重启并请求管理员权限", "提示", wx.OK | wx.ICON_INFORMATION)
+        run_as_admin()
+        wx.GetApp().GetTopWindow().Close()
+        
+    def OnRedetectPssuspend(self, e=None):
+        """重新检测pssuspend64.exe是否存在"""
+        has_pssuspend = check_pssuspend_exists()
+        admin_status = is_admin()
+        
+        if has_pssuspend and admin_status:
+            self.enhanced_freeze_checkbox.Enable(True)
+            self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip("使用Microsoft的pssuspend64工具执行进程冻结操作，提供更稳定的冻结效果"))
+            wx.MessageBox("检测到pssuspend64.exe文件，增强冻结功能已启用！", "检测成功", wx.OK | wx.ICON_INFORMATION)
+        elif not has_pssuspend:
+            self.enhanced_freeze_checkbox.SetValue(False)
+            self.enhanced_freeze_checkbox.Enable(False)
+            self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip("需要pssuspend64.exe才能启用此功能"))
+            
+            dlg = wx.MessageDialog(self, 
+                "未检测到pssuspend64.exe文件！\n请先下载并放置到程序根目录，然后重新检测。\n\n您可以从以下链接下载：\nhttps://download.sysinternals.com/files/PSTools.zip",
+                "检测失败", wx.OK | wx.ICON_ERROR)
+            dlg.SetOKLabel("确定")
+            dlg.SetOKCancelLabels("确定", "下载")
+            result = dlg.ShowModal()
+            if result == wx.ID_CANCEL:
+                webbrowser.open("https://download.sysinternals.com/files/PSTools.zip")
+            dlg.Destroy()
+        elif not admin_status:
+            self.enhanced_freeze_checkbox.SetValue(False)
+            self.enhanced_freeze_checkbox.Enable(False)
+            self.enhanced_freeze_checkbox.SetToolTip(wx.ToolTip("需要管理员权限才能启用此功能"))
+            
+            result = wx.MessageDialog(None, "检测到pssuspend64.exe文件，但增强冻结功能需要管理员权限才能使用！\n是否以管理员身份重启程序？", 
+                              "权限不足", wx.YES_NO | wx.ICON_WARNING).ShowModal()
+            
+            if result == wx.ID_YES:
+                run_as_admin()
+                wx.GetApp().ExitMainLoop()

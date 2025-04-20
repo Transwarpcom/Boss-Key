@@ -8,6 +8,7 @@ from pynput import keyboard
 import multiprocessing
 import threading
 import time
+import os
 import wx
 
 class HotkeyListener():
@@ -117,7 +118,7 @@ class HotkeyListener():
     
     def HideWindows(self):
         # 隐藏窗口
-
+        
         Config.load()
         needHide=[]
         frozen_pids=[]
@@ -151,6 +152,9 @@ class HotkeyListener():
             if Config.freeze_after_hide:
                 try:
                     pid = win32process.GetWindowThreadProcessId(hwnd)[1]
+                    current_pid = win32process.GetCurrentProcessId()  # 获取当前程序的PID
+                    if pid != current_pid and pid !=os.getpid():  # 如果当前窗口的pid与本程序的pid相同，则不冻结
+                        frozen_pids.append(pid)
                     frozen_pids.append(pid)
                 except:
                     pass

@@ -44,7 +44,7 @@ class APP(wx.App):
         self.SetAppDisplayName(Config.AppName)
         self.SetVendorName(Config.AppAuthor)
 
-        lock=os.path.join(os.path.dirname(sys.argv[0]),"Boss-Key.lock")
+        lock=os.path.join(Config.root_path,"Boss-Key.lock")
         if self.is_already_running(lock):
             ask=wx.MessageBox("Boss Key 可能已在运行\n点击“确定”继续运行新的Boss-Key程序\n点击“取消”直接关闭此窗口","Boss Key", wx.OK | wx.ICON_INFORMATION | wx.CANCEL | wx.CANCEL_DEFAULT)
             if ask==wx.OK:
