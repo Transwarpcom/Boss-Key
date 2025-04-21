@@ -49,15 +49,15 @@ class HotkeysPage(scrolled.ScrolledPanel):
         mouse_grid_sizer = wx.GridSizer(rows=1, cols=3, gap=(10, 10))
         
         # 中键选项
-        self.middle_button_checkbox = wx.CheckBox(self, label="启用鼠标中键隐藏窗口")
+        self.middle_button_checkbox = wx.CheckBox(self, label="启用鼠标中键切换隐藏")
         self.middle_button_checkbox.SetToolTip(wx.ToolTip("点击鼠标中键可快速隐藏/显示窗口"))
         
         # 侧键1选项
-        self.side_button1_checkbox = wx.CheckBox(self, label="启用鼠标侧键1隐藏窗口")
+        self.side_button1_checkbox = wx.CheckBox(self, label="启用鼠标侧键1切换隐藏")
         self.side_button1_checkbox.SetToolTip(wx.ToolTip("点击鼠标侧键1(前进键)可快速隐藏/显示窗口"))
         
         # 侧键2选项
-        self.side_button2_checkbox = wx.CheckBox(self, label="启用鼠标侧键2隐藏窗口")
+        self.side_button2_checkbox = wx.CheckBox(self, label="启用鼠标侧键2切换隐藏")
         self.side_button2_checkbox.SetToolTip(wx.ToolTip("点击鼠标侧键2(后退键)可快速隐藏/显示窗口"))
         
         mouse_grid_sizer.Add(self.middle_button_checkbox, 0, wx.ALL, 10)
@@ -67,22 +67,22 @@ class HotkeysPage(scrolled.ScrolledPanel):
         mouse_move_grid_sizer = wx.GridSizer(rows=2, cols=2, gap=(10, 10))
         
         # 左上角
-        self.top_left_checkbox = wx.CheckBox(self, label="左上角隐藏窗口")
+        self.top_left_checkbox = wx.CheckBox(self, label="左上角快速隐藏")
         self.top_left_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至左上角以隐藏窗口"))
         mouse_move_grid_sizer.Add(self.top_left_checkbox, 0, wx.ALL, 10)
         
         # 右上角
-        self.top_right_checkbox = wx.CheckBox(self, label="右上角隐藏窗口")
+        self.top_right_checkbox = wx.CheckBox(self, label="右上角快速隐藏")
         self.top_right_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至右上角以隐藏窗口"))
         mouse_move_grid_sizer.Add(self.top_right_checkbox, 0, wx.ALL, 10)
         
         # 左下角
-        self.bottom_left_checkbox = wx.CheckBox(self, label="左下角隐藏窗口")
+        self.bottom_left_checkbox = wx.CheckBox(self, label="左下角快速隐藏")
         self.bottom_left_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至左下角以隐藏窗口"))
         mouse_move_grid_sizer.Add(self.bottom_left_checkbox, 0, wx.ALL, 10)
         
         # 右下角
-        self.bottom_right_checkbox = wx.CheckBox(self, label="右下角隐藏窗口")
+        self.bottom_right_checkbox = wx.CheckBox(self, label="右下角快速隐藏")
         self.bottom_right_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至右下角以隐藏窗口"))
         mouse_move_grid_sizer.Add(self.bottom_right_checkbox, 0, wx.ALL, 10)
 
@@ -90,7 +90,7 @@ class HotkeysPage(scrolled.ScrolledPanel):
         mouse_box_sizer.Add(mouse_move_grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         # 添加允许移动恢复选项
-        self.allow_move_restore_checkbox = wx.CheckBox(self, label="允许移动恢复")
+        self.allow_move_restore_checkbox = wx.CheckBox(self, label="启用移动恢复窗口")
         self.allow_move_restore_checkbox.SetToolTip(wx.ToolTip("启用后可通过移动鼠标到同一角落恢复已隐藏的窗口"))
         mouse_box_sizer.Add(self.allow_move_restore_checkbox, 0, wx.ALL, 10)
         
