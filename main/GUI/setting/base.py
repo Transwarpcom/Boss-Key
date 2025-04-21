@@ -47,7 +47,7 @@ class SettingWindow(wx.Frame):
         sizer.Add(button_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         # 设置提示
-        if not Config.first_start:
+        if Config.first_start:
             self.infobar.ShowMessage("欢迎使用 Boss Key！本页面仅在首次启动或内容有更新时自动显示，后续可通过托盘图标打开本页面", wx.ICON_INFORMATION)
         
         panel.SetSizer(sizer)
