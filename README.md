@@ -1,6 +1,6 @@
 # Boss-Key
 
-![](/src/static/bannar.jpg)
+![Boss-Key logo bannar](/src/static/bannar.jpg)
 
 ![Github Release Version](https://img.shields.io/github/v/release/IvanHanloth/Boss-Key)
 ![Github Repo License](https://img.shields.io/github/license/IvanHanloth/Boss-Key)
@@ -13,13 +13,13 @@
 支持多窗口隐藏、多进程隐藏、自定义热键、隐藏活动窗口、静音窗口、暂停视频播放等超多功能，完全免费、开源，无强制弹窗等
 
 ## 应用截图
-![](/src/static/screenshot-1.png)
+![Boss-Key设置窗口绑定页](/src/static/screenshot-1.png)
 
-![](/src/static/screenshot-2.png)
+![Boss-Key设置热键设置页](/src/static/screenshot-5.png)
 
-![](/src/static/screenshot-3.png)
+![Boss-Key设置窗口其他选项页](/src/static/screenshot-3.png)
 
-![](/src/static/screenshot-4.png)
+![Boss-Key运行提示](/src/static/screenshot-4.png)
 
 ## 使用说明
 从v2.0.0版本开始，每个版本都会提供三种类型的程序，可以从[Release页面](https://github.com/IvanHanloth/Boss-Key/releases)下载
@@ -61,6 +61,11 @@
 
 完成所有热键修改后，**记得点击下方的“保存设置”按钮保存并启用设置**
 
+### 鼠标隐藏
+v2.1.0版本加入了鼠标相关操作隐藏绑定，可以选择鼠标中键、侧键1、侧键2切换串口隐藏状态。
+
+可以勾选快速移动鼠标至四角隐藏窗口（启用允许移动恢复功能以允许通过快速移动鼠标至四角恢复窗口）
+
 ### 检查更新
 
 右键点击托盘打开托盘菜单，选择“检查更新”即可打开当前检查更新窗口。
@@ -78,6 +83,7 @@
 
 #### 文件路径匹配功能
 Boss Key默认使用窗口标题等多因素进行窗口匹配以确保精确隐藏窗口，但是有时可能出现希望根据可执行文件路径来进行匹配：
+
 即只要是由同一个程序启动的窗口都隐藏，此时就可以启用“文件路径匹配”选项进行模糊匹配
 
 #### 同时隐藏当前活动窗口
@@ -87,7 +93,15 @@ Boss Key默认使用窗口标题等多因素进行窗口匹配以确保精确隐
 启用该功能后，可以通过单击托盘图标来显示或隐藏窗口
 
 ### 设置和关闭开机自启
-如果需要让Boss-Key程序开机自启，可以右键点击托盘图标，在弹出的菜单中选择“开机自启”来切换开机自启状态
+如果需要让Boss-Key程序开机自启，可以右键点击托盘图标，在弹出的菜单中选择“开机自启”来切换开机自启状态，或从窗口菜单->工具->开机自启选项进行切换。
+
+### 进程冻结相关功能
+自v2.1.0版本开始，Boss-Key加入了隐藏窗口后冻结进程功能。启用此功能将在隐藏窗口后将对应的进程“冻结”，减轻CPU和内存压力。
+启用此功能需要**以管理员身份运行**。冻结加强功能则额外需要下载pssuspend64.exe文件置于程序目录下以供调用。
+
+**如何下载和使用加强冻结功能：**
+
+您需要手动访问[https://download.sysinternals.com/files/PSTools.zip](https://download.sysinternals.com/files/PSTools.zip)页面，下载由Microsoft提供的PSTools工具包。解压下载得到`PSTools.zip`文件，可以找到`pssuspend64.exe`文件，直接复制该文件，放置于Boss-Key程序的安装根目录即可。
 
 ## 常见问题
 **为什么我的电脑运行不了编译后的程序**
@@ -124,7 +138,12 @@ Boss-Key
 │   │   ├── __init__.py     初始化包
 │   │   ├── about.py     关于页面
 │   │   ├── record.py     录制热键页面
-│   │   ├── setting.py     设置页面
+│   │   ├── setting    设置页面相关子类
+│   │   │   ├── __init__.py 初始化包
+│   │   │   ├── base.py  设置页面基础类
+│   │   │   ├── binding_page.py  窗口绑定页面  
+│   │   │   ├── hotkeys_page.py  热键绑定页面
+│   │   │   └── options_page.py  其他选项页面
 │   │   ├── taskbar.py     托盘图标
 │   │   └── window_restore.py   窗口恢复工具页面
 │   └── Boss-Key.py     项目入口文件
@@ -158,7 +177,18 @@ Boss-Key
 ## 已知问题
 - 无法隐藏部分游戏窗口，可能由于游戏窗口加密导致
 
+## 鸣谢
+感谢雪藏HsFreezer提供的进程冻结实现思路
+
 ## 更新日志
+**V2.1.0 （更新于2025/4/21）**
+- 新增鼠标中键、侧键隐藏功能
+- 新增鼠标移动至四角隐藏功能
+- 新增进程冻结功能
+- 新增自动隐藏功能
+- 优化界面UI设计
+- 优化窗口恢复工具
+
 **V2.0.4 （更新于2025/4/9）**
 - 修复无法正确禁音应用的问题
 - 优化选项提示

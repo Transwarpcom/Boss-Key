@@ -19,6 +19,7 @@ import wx
 from core.config import Config
 import platform
 import atexit
+from GUI.setting.base import SettingWindow
 
 if platform.system() == "Windows":
     if platform.release() == "7":
@@ -30,8 +31,17 @@ class APP(wx.App):
     def __init__(self):
         wx.App.__init__(self)
         def clean():
+            print("Global Cleaning up...")
+            try:
+                Config.HotkeyListener._cleanup()
+            except:
+                pass
             try:
                 Config.HotkeyListener.Close()
+            except:
+                pass
+            try:
+                os.remove(os.path.join(Config.root_path,"Boss-Key.lock"))
             except:
                 pass
         atexit.register(clean)
@@ -43,7 +53,7 @@ class APP(wx.App):
         self.SetAppDisplayName(Config.AppName)
         self.SetVendorName(Config.AppAuthor)
 
-        lock=os.path.join(os.path.dirname(sys.argv[0]),"Boss-Key.lock")
+        lock=os.path.join(Config.root_path,"Boss-Key.lock")
         if self.is_already_running(lock):
             ask=wx.MessageBox("Boss Key 可能已在运行\n点击“确定”继续运行新的Boss-Key程序\n点击“取消”直接关闭此窗口","Boss Key", wx.OK | wx.ICON_INFORMATION | wx.CANCEL | wx.CANCEL_DEFAULT)
             if ask==wx.OK:
@@ -90,7 +100,7 @@ if __name__ == '__main__':
     Config.SettingWindowId = wx.NewIdRef()
     Config.TaskBarIcon=taskbar.TaskBarIcon()
     Config.HotkeyListener=listener.HotkeyListener()
-    setting.SettingWindow(Config.SettingWindowId)
+    SettingWindow(Config.SettingWindowId)
     if Config.first_start:
         wx.FindWindowById(Config.SettingWindowId).Show()
     app.MainLoop()

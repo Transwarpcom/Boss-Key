@@ -6,3 +6,5 @@ user.ini
 *.lock
 out/
 test.py
+pssuspend64.exe
+.bosskey_state
