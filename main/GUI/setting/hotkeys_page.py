@@ -2,11 +2,14 @@ import wx
 from core.config import Config
 import GUI.record as record
 
-class HotkeysPage(wx.Panel):
+import wx.lib.scrolledpanel as scrolled
+
+class HotkeysPage(scrolled.ScrolledPanel):
     def __init__(self, parent):
         super().__init__(parent)
         self.init_UI()
         self.Bind_EVT()
+        self.SetupScrolling()
         
     def init_UI(self):
         sizer = wx.BoxSizer(wx.VERTICAL)

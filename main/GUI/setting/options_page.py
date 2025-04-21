@@ -2,14 +2,16 @@ import wx
 import wx.adv
 import webbrowser
 from core.config import Config
+import wx.lib.scrolledpanel as scrolled
 import os
 from core.tools import check_pssuspend_exists, is_admin, run_as_admin
 
-class OptionsPage(wx.Panel):
+class OptionsPage(scrolled.ScrolledPanel):
     def __init__(self, parent):
         super().__init__(parent)
         self.init_UI()
         self.Bind_EVT()
+        self.SetupScrolling()
         
     def init_UI(self):
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -59,7 +61,7 @@ class OptionsPage(wx.Panel):
         grid_sizer.Add(path_sizer, 0, wx.ALL, 10)
         
         general_box_sizer.Add(grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
-        sizer.Add(general_box_sizer, 0, wx.EXPAND | wx.ALL, 20)
+        sizer.Add(general_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         # 创建一个StaticBox用于包含冻结相关的选项
         freeze_box = wx.StaticBox(self, label="进程冻结选项")
@@ -118,7 +120,7 @@ class OptionsPage(wx.Panel):
         
         freeze_box_sizer.Add(link_buttons_sizer, 0, wx.ALL, 10)
         
-        sizer.Add(freeze_box_sizer, 0, wx.EXPAND | wx.ALL, 20)
+        sizer.Add(freeze_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         self.SetSizer(sizer)
         
