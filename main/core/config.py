@@ -58,6 +58,13 @@ SOFTWARE.
     side_button2_hide = False   # 鼠标侧键2隐藏功能开关
     auto_hide_enabled = False   # 自动隐藏功能开关
     auto_hide_time = 5          # 自动隐藏等待时间(分钟)
+    
+    # 添加鼠标四角隐藏配置
+    top_left_hide = False       # 左上角隐藏窗口
+    top_right_hide = False      # 右上角隐藏窗口
+    bottom_left_hide = False    # 左下角隐藏窗口
+    bottom_right_hide = False   # 右下角隐藏窗口
+    allow_move_restore = False  # 允许移动恢复窗口
 
     hide_binding = []
     
@@ -108,6 +115,13 @@ SOFTWARE.
         Config.auto_hide_enabled = config.get("setting", {}).get("auto_hide_enabled", False)  # 加载自动隐藏功能开关
         Config.auto_hide_time = config.get("setting", {}).get("auto_hide_time", 5)  # 加载自动隐藏等待时间
         
+        # 加载鼠标四角隐藏设置
+        Config.top_left_hide = config.get("setting", {}).get("top_left_hide", False)
+        Config.top_right_hide = config.get("setting", {}).get("top_right_hide", False)
+        Config.bottom_left_hide = config.get("setting", {}).get("bottom_left_hide", False)
+        Config.bottom_right_hide = config.get("setting", {}).get("bottom_right_hide", False)
+        Config.allow_move_restore = config.get("setting", {}).get("allow_move_restore", False)
+        
         Config.click_to_hide= config.get("setting", {}).get("click_to_hide", True)
 
         Config.hide_hotkey = config.get("hotkey", {}).get("hide_hotkey", "Ctrl+Q")
@@ -143,7 +157,14 @@ SOFTWARE.
                 'side_button1_hide': Config.side_button1_hide,  # 保存鼠标侧键1隐藏设置
                 'side_button2_hide': Config.side_button2_hide,  # 保存鼠标侧键2隐藏设置
                 'auto_hide_enabled': Config.auto_hide_enabled,  # 保存自动隐藏功能开关
-                'auto_hide_time': Config.auto_hide_time  # 保存自动隐藏等待时间
+                'auto_hide_time': Config.auto_hide_time,  # 保存自动隐藏等待时间
+                
+                # 保存鼠标四角隐藏设置
+                'top_left_hide': Config.top_left_hide,
+                'top_right_hide': Config.top_right_hide,
+                'bottom_left_hide': Config.bottom_left_hide,
+                'bottom_right_hide': Config.bottom_right_hide,
+                'allow_move_restore': Config.allow_move_restore
             },
             # 将WindowInfo对象列表转换为字典列表用于JSON序列化
             "hide_binding": [item.to_dict() if isinstance(item, WindowInfo) else item for item in Config.hide_binding]

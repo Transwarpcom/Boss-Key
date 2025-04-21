@@ -3,8 +3,9 @@ import core.tools as tool
 from win32gui import GetForegroundWindow, ShowWindow
 from win32con import SW_HIDE, SW_SHOW
 import win32process
+import win32api
 import sys
-from pynput import keyboard, mouse  # 确保导入mouse模块
+from pynput import keyboard, mouse
 import multiprocessing
 import threading
 import time
@@ -17,6 +18,7 @@ class HotkeyListener():
         self.Queue = multiprocessing.Queue()
         self.listener = None
         self.mouse_listener = None
+        self.mouse_move_listener = None  # 鼠标移动监听器
         self.keyboard_activity_listener = None
         self.mouse_activity_listener = None
         self.last_activity_time = time.time()
@@ -24,7 +26,14 @@ class HotkeyListener():
         self.shared_state_file = os.path.join(Config.root_path, ".bosskey_state")
         self.end_flag = False
         
-        # 然后再执行可能使用这些属性的方法
+        # 角落边界检测参数
+        self.corner_threshold = 10  # 角落检测的阈值（像素）
+        self.corner_cooldown = 1.0  # 角落触发的冷却时间（秒）
+        self.last_corner_trigger = 0  # 上次角落触发的时间戳
+        # 使用win32api获取屏幕尺寸
+        self.screen_width = win32api.GetSystemMetrics(0)  # SM_CXSCREEN常量为0
+        self.screen_height = win32api.GetSystemMetrics(1)  # SM_CYSCREEN常量为1
+        
         try:
             self.ShowWindows()
         except:
@@ -72,6 +81,13 @@ class HotkeyListener():
            (hasattr(Config, 'side_button1_hide') and Config.side_button1_hide) or \
            (hasattr(Config, 'side_button2_hide') and Config.side_button2_hide):
             self.start_mouse_listener()
+            
+        # 如果启用了任何屏幕角落隐藏，则添加鼠标移动监听
+        if (hasattr(Config, 'top_left_hide') and Config.top_left_hide) or \
+           (hasattr(Config, 'top_right_hide') and Config.top_right_hide) or \
+           (hasattr(Config, 'bottom_left_hide') and Config.bottom_left_hide) or \
+           (hasattr(Config, 'bottom_right_hide') and Config.bottom_right_hide):
+            self.start_mouse_move_listener()
         
         # 启动自动隐藏监控（如果启用）
         self.start_auto_hide_monitor()
@@ -171,6 +187,53 @@ class HotkeyListener():
                (button == mouse.Button.x2 and Config.side_button2_hide):
                 # 在主线程中执行onHide
                 wx.CallAfter(self.onHide)
+
+    def start_mouse_move_listener(self):
+        """启动鼠标移动监听器"""
+        if self.mouse_move_listener is None or not self.mouse_move_listener.is_alive():
+            self.mouse_move_listener = mouse.Listener(on_move=self.on_mouse_move)
+            self.mouse_move_listener.daemon = True
+            self.mouse_move_listener.start()
+    
+    def on_mouse_move(self, x, y):
+        """鼠标移动事件处理，检测四个角落"""
+        now = time.time()
+        # 如果冷却时间未过，则不处理
+        if now - self.last_corner_trigger < self.corner_cooldown:
+            return
+            
+        # 获取当前窗口状态，1=显示，0=隐藏
+        current_state = self.get_windows_state()
+        
+        # 检测是否在角落区域
+        corner_detected = None
+        
+        # 左上角
+        if x <= self.corner_threshold and y <= self.corner_threshold:
+            if Config.top_left_hide:
+                corner_detected = "top_left"
+        
+        # 右上角
+        elif x >= self.screen_width - self.corner_threshold and y <= self.corner_threshold:
+            if Config.top_right_hide:
+                corner_detected = "top_right"
+        
+        # 左下角
+        elif x <= self.corner_threshold and y >= self.screen_height - self.corner_threshold:
+            if Config.bottom_left_hide:
+                corner_detected = "bottom_left"
+        
+        # 右下角
+        elif x >= self.screen_width - self.corner_threshold and y >= self.screen_height - self.corner_threshold:
+            if Config.bottom_right_hide:
+                corner_detected = "bottom_right"
+        
+        # 如果检测到角落并且满足条件
+        if corner_detected:
+            # 根据当前状态和恢复设置决定是否执行操作
+            if current_state == 1 or (current_state == 0 and Config.allow_move_restore):
+                wx.CallAfter(self.onHide)
+                self.last_corner_trigger = now
 
     def ListenerProcess(self, hotkey):
         """键盘热键监听进程"""
@@ -343,11 +406,19 @@ class HotkeyListener():
             finally:
                 self.listener = None
                 
-        # 停止鼠标监听器
+        # 停止鼠标按键监听器
         if hasattr(self, 'mouse_listener') and self.mouse_listener is not None:
             try:
                 self.mouse_listener.stop()
                 self.mouse_listener = None
+            except:
+                pass
+        
+        # 停止鼠标移动监听器
+        if hasattr(self, 'mouse_move_listener') and self.mouse_move_listener is not None:
+            try:
+                self.mouse_move_listener.stop()
+                self.mouse_move_listener = None
             except:
                 pass
                 

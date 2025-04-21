@@ -42,6 +42,8 @@ class HotkeysPage(wx.Panel):
         # 添加鼠标隐藏选项
         mouse_box = wx.StaticBox(self, label="鼠标隐藏")
         mouse_box_sizer = wx.StaticBoxSizer(mouse_box, wx.VERTICAL)
+
+        mouse_grid_sizer = wx.GridSizer(rows=1, cols=3, gap=(10, 10))
         
         # 中键选项
         self.middle_button_checkbox = wx.CheckBox(self, label="启用鼠标中键隐藏窗口")
@@ -55,9 +57,39 @@ class HotkeysPage(wx.Panel):
         self.side_button2_checkbox = wx.CheckBox(self, label="启用鼠标侧键2隐藏窗口")
         self.side_button2_checkbox.SetToolTip(wx.ToolTip("点击鼠标侧键2(后退键)可快速隐藏/显示窗口"))
         
-        mouse_box_sizer.Add(self.middle_button_checkbox, 0, wx.ALL, 10)
-        mouse_box_sizer.Add(self.side_button1_checkbox, 0, wx.ALL, 10)
-        mouse_box_sizer.Add(self.side_button2_checkbox, 0, wx.ALL, 10)
+        mouse_grid_sizer.Add(self.middle_button_checkbox, 0, wx.ALL, 10)
+        mouse_grid_sizer.Add(self.side_button1_checkbox, 0, wx.ALL, 10)
+        mouse_grid_sizer.Add(self.side_button2_checkbox, 0, wx.ALL, 10)
+
+        mouse_move_grid_sizer = wx.GridSizer(rows=2, cols=2, gap=(10, 10))
+        
+        # 左上角
+        self.top_left_checkbox = wx.CheckBox(self, label="左上角隐藏窗口")
+        self.top_left_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至左上角以隐藏窗口"))
+        mouse_move_grid_sizer.Add(self.top_left_checkbox, 0, wx.ALL, 10)
+        
+        # 右上角
+        self.top_right_checkbox = wx.CheckBox(self, label="右上角隐藏窗口")
+        self.top_right_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至右上角以隐藏窗口"))
+        mouse_move_grid_sizer.Add(self.top_right_checkbox, 0, wx.ALL, 10)
+        
+        # 左下角
+        self.bottom_left_checkbox = wx.CheckBox(self, label="左下角隐藏窗口")
+        self.bottom_left_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至左下角以隐藏窗口"))
+        mouse_move_grid_sizer.Add(self.bottom_left_checkbox, 0, wx.ALL, 10)
+        
+        # 右下角
+        self.bottom_right_checkbox = wx.CheckBox(self, label="右下角隐藏窗口")
+        self.bottom_right_checkbox.SetToolTip(wx.ToolTip("快速移动鼠标至右下角以隐藏窗口"))
+        mouse_move_grid_sizer.Add(self.bottom_right_checkbox, 0, wx.ALL, 10)
+
+        mouse_box_sizer.Add(mouse_grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
+        mouse_box_sizer.Add(mouse_move_grid_sizer, 0, wx.EXPAND | wx.ALL, 10)
+        
+        # 添加允许移动恢复选项
+        self.allow_move_restore_checkbox = wx.CheckBox(self, label="允许移动恢复")
+        self.allow_move_restore_checkbox.SetToolTip(wx.ToolTip("启用后可通过移动鼠标到同一角落恢复已隐藏的窗口"))
+        mouse_box_sizer.Add(self.allow_move_restore_checkbox, 0, wx.ALL, 10)
         
         sizer.Add(mouse_box_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
@@ -115,6 +147,13 @@ class HotkeysPage(wx.Panel):
         self.auto_hide_time.SetValue(auto_hide_time)
         self.auto_hide_time.Enable(auto_hide_enabled)
         
+        # 设置鼠标移动至四角隐藏选项
+        self.top_left_checkbox.SetValue(Config.top_left_hide if hasattr(Config, 'top_left_hide') else False)
+        self.top_right_checkbox.SetValue(Config.top_right_hide if hasattr(Config, 'top_right_hide') else False)
+        self.bottom_left_checkbox.SetValue(Config.bottom_left_hide if hasattr(Config, 'bottom_left_hide') else False)
+        self.bottom_right_checkbox.SetValue(Config.bottom_right_hide if hasattr(Config, 'bottom_right_hide') else False)
+        self.allow_move_restore_checkbox.SetValue(Config.allow_move_restore if hasattr(Config, 'allow_move_restore') else False)
+        
     def SaveData(self):
         Config.hide_hotkey = self.hide_show_text.GetValue()
         Config.close_hotkey = self.close_text.GetValue()
@@ -126,6 +165,13 @@ class HotkeysPage(wx.Panel):
         Config.auto_hide_enabled = self.auto_hide_checkbox.GetValue()
         Config.auto_hide_time = self.auto_hide_time.GetValue()
         
+        # 保存鼠标移动至四角隐藏设置
+        Config.top_left_hide = self.top_left_checkbox.GetValue()
+        Config.top_right_hide = self.top_right_checkbox.GetValue()
+        Config.bottom_left_hide = self.bottom_left_checkbox.GetValue()
+        Config.bottom_right_hide = self.bottom_right_checkbox.GetValue()
+        Config.allow_move_restore = self.allow_move_restore_checkbox.GetValue()
+        
     def Reset(self):
         self.hide_show_text.SetValue("Ctrl+Q")
         self.close_text.SetValue("Win+Esc")
@@ -135,6 +181,13 @@ class HotkeysPage(wx.Panel):
         self.auto_hide_checkbox.SetValue(False)
         self.auto_hide_time.SetValue(5)
         self.auto_hide_time.Enable(False)
+        
+        # 重置鼠标移动至四角隐藏设置
+        self.top_left_checkbox.SetValue(False)
+        self.top_right_checkbox.SetValue(False)
+        self.bottom_left_checkbox.SetValue(False)
+        self.bottom_right_checkbox.SetValue(False)
+        self.allow_move_restore_checkbox.SetValue(False)
         
     def OnRecordHideShow(self, e):
         self.recordHotkey(self.hide_show_text, self.hide_show_btn)
