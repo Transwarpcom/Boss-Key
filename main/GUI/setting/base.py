@@ -11,6 +11,7 @@ class SettingWindow(wx.Frame):
         self.SetIcon(wx.Icon(wx.Image(Config.icon).ConvertToBitmap()))
         
         self.init_UI()
+        self.InitMenu()
         self.Bind_EVT()
         self.SetData()
         self.SetSize((1500, 800))
@@ -18,6 +19,7 @@ class SettingWindow(wx.Frame):
 
     def init_UI(self):
         panel = wx.Panel(self)
+        self.infobar = wx.InfoBar(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
         
         # 创建notebook
@@ -32,6 +34,7 @@ class SettingWindow(wx.Frame):
         self.notebook.AddPage(self.hotkeys_page, "热键设置")
         self.notebook.AddPage(self.options_page, "其他选项")
         
+        sizer.Add(self.infobar, 0, wx.EXPAND | wx.ALL, 5)
         sizer.Add(self.notebook, 1, wx.EXPAND | wx.ALL, 5)
         
         # 创建按钮
@@ -44,12 +47,39 @@ class SettingWindow(wx.Frame):
         sizer.Add(button_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
         # 设置提示
-        if Config.first_start:
-            static_text = wx.StaticText(panel, label="本页面仅在首次启动或内容有更新时自动显示，后续可通过托盘图标打开本页面")
-            sizer.Add(static_text, 0, wx.EXPAND | wx.BOTTOM, 10)
+        if not Config.first_start:
+            self.infobar.ShowMessage("欢迎使用 Boss Key！本页面仅在首次启动或内容有更新时自动显示，后续可通过托盘图标打开本页面", wx.ICON_INFORMATION)
         
         panel.SetSizer(sizer)
         sizer.Fit(self)
+
+    def InitMenu(self):
+        ## 创建菜单栏
+        menuBar = wx.MenuBar()
+        menu1 = wx.Menu()
+        menu1.Append(101, "检查更新")
+        menu1.Append(wx.ID_ABOUT, "关于程序")
+        menu1.AppendSeparator()
+        menu1.Append(wx.ID_EXIT, "退出程序")
+        menuBar.Append(menu1, "关于(&A)")
+
+        menu2 = wx.Menu()
+        menu2.Append(201, "开机自启", kind=wx.ITEM_CHECK)
+        menu2.Append(202, "窗口恢复工具")
+        menuBar.Append(menu2, "工具(&T)")
+
+        # menuBar.Append(300, "帮助(&H)")
+
+        self.SetMenuBar(menuBar)
+
+        ## 绑定菜单事件
+        self.Bind(wx.EVT_MENU, Config.TaskBarIcon.onUpdate, id=101)
+        self.Bind(wx.EVT_MENU, Config.TaskBarIcon.onAbout, id=wx.ID_ABOUT)
+        self.Bind(wx.EVT_MENU, Config.TaskBarIcon.onExit, id=wx.ID_EXIT)
+        self.Bind(wx.EVT_MENU, Config.TaskBarIcon.onStartup, id=201)
+        self.Bind(wx.EVT_MENU_OPEN, self.OnUpdateStartupStatus)
+        self.Bind(wx.EVT_MENU, Config.TaskBarIcon.onRestore, id=202)
+        # self.Bind(wx.EVT_MENU, self.OnHelp, id=300)
 
     def Bind_EVT(self):
         self.save_btn.Bind(wx.EVT_BUTTON, self.OnSave)
@@ -86,6 +116,11 @@ class SettingWindow(wx.Frame):
 
     def OnClose(self, e):
         self.Hide()
+
+    def OnUpdateStartupStatus(self, e=""):
+        # 更新菜单项的选中状态
+        print(1)
+        self.GetMenuBar().FindItemById(201).Check(tool.checkStartup("Boss Key Application", Config.file_path))
         
     def RefreshLeftList(self, e=None):
         """刷新左侧列表，供外部调用"""

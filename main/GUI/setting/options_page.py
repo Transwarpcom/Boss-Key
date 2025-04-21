@@ -3,7 +3,6 @@ import wx.adv
 import webbrowser
 from core.config import Config
 import wx.lib.scrolledpanel as scrolled
-import os
 from core.tools import check_pssuspend_exists, is_admin, run_as_admin
 
 class OptionsPage(scrolled.ScrolledPanel):

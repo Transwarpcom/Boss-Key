@@ -200,7 +200,7 @@ class HotkeysPage(scrolled.ScrolledPanel):
         
     def recordHotkey(self, text_ctrl: wx.TextCtrl, btn: wx.Button):
         try:
-            Config.HotkeyListener.stop()
+            Config.HotkeyListener._stop()
         except:
             pass
         btn.Disable()
