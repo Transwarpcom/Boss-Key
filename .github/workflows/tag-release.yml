@@ -64,7 +64,7 @@ jobs:
         with:
           name: ${{ github.ref_name }}-Build
           path: |
-            out/Boss-Key.dist
+            out/Boss-Key.dist/
             
       - name: Release
         uses: softprops/action-gh-release@v2
