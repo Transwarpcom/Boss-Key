@@ -56,7 +56,7 @@ jobs:
         with:
           name: Build-Test-Build
           path: |
-            out/Boss-Key.dist
+            out/Boss-Key.dist/
 
   deploy-test:
     environment:
