@@ -25,7 +25,9 @@ class HotkeyListener():
         self.auto_hide_timer = None
         self.shared_state_file = os.path.join(Config.root_path, ".bosskey_state")
         self.end_flag = False
-        
+        self.pressed_keys = set()
+        self.hotkeys_to_check = {}
+
         # 角落边界检测参数
         self.corner_threshold = 10  # 角落检测的阈值（像素）
         self.corner_cooldown = 1.0  # 角落触发的冷却时间（秒）
@@ -235,32 +237,197 @@ class HotkeyListener():
                 wx.CallAfter(self.onHide)
                 self.last_corner_trigger = now
 
-    def ListenerProcess(self, hotkey):
-        """键盘热键监听进程"""
+def get_key_string(self, key):
+        """将 pynput key 对象转换为统一的字符串，用于热键匹配。"""
         try:
-            with keyboard.GlobalHotKeys(hotkey) as listener:
+            if isinstance(key, keyboard.Key):
+                # 特殊按键 (e.g., Key.ctrl, Key.end)
+                name = key.name.upper() # 'ctrl' -> 'CTRL', 'end' -> 'END'
+
+                # 映射 pynput 内部名称到 Config 中使用的名称
+                if name.startswith('CTRL'):
+                    return 'CTRL'
+                if name.startswith('ALT'):
+                    return 'ALT'
+                if name.startswith('SHIFT'):
+                    return 'SHIFT'
+                if name.startswith('CMD') or name == 'SUPER': # 'super' is 'win' on linux
+                    return 'WIN'
+                if name == 'ESCAPE':
+                    return 'ESC'
+
+                # 直接返回大写名称 (e.g., 'END', 'F1')
+                return name
+            elif isinstance(key, keyboard.KeyCode):
+                # 字符按键
+                if key.char:
+                    return key.char.upper() # 'q' -> 'Q'
+        except Exception:
+            pass # 忽略无法处理的按键
+        return None
+
+    def parse_hotkey_to_set(self, hotkey_str):
+        """将 'Ctrl+Q' 这样的热键字符串解析为 frozenset({'CTRL', 'Q'})。"""
+        keys = hotkey_str.upper().split('+')
+        return frozenset(keys)
+
+    def on_press(self, key):
+        """按键按下的回调函数，在此处实现热键匹配和抑制。"""
+        key_str = self.get_key_string(key)
+        if not key_str:
+            return True # 不抑制未知按键
+
+        self.pressed_keys.add(key_str)
+
+        action_to_run = None
+        suppress = False
+
+        # 1. 检查是否有完整的热键匹配 (使用 == 进行精确匹配)
+        for hotkey_set, action in self.hotkeys_to_check.items():
+            if hotkey_set == self.pressed_keys:
+                action_to_run = action
+                suppress = True
+                break
+
+        if action_to_run:
+            try:
+                action_to_run() # 执行绑定的动作 (e.g., self.onHide)
+            except Exception as e:
+                print(f"执行热键动作时出错: {e}")
+
+            # 动作执行后，返回 False 以抑制按键
+            return False
+
+        # 2. 如果没有完整匹配，检查当前按键是否为 *某个* 热键的一部分
+        #    (例如，只按下了 Ctrl)
+        for hotkey_set, action in self.hotkeys_to_check.items():
+            if self.pressed_keys and self.pressed_keys.issubset(hotkey_set):
+                suppress = True
+                break
+
+        return not suppress # 如果 suppress=True (是热键一部分)，返回 False (抑制)
+                            # 如果 suppress=False (不是热键)，返回 True (不抑制)
+
+    def on_release(self, key):
+        """按键松开的回调函数，用于清理 pressed_keys 集合。"""
+        key_str = self.get_key_string(key)
+        if key_str in self.pressed_keys:
+            try:
+                self.pressed_keys.remove(key_str)
+            except KeyError:
+                pass # 
+        return True # 松开事件总是不抑制
+
+    def get_key_string(self, key):
+        """将 pynput key 对象转换为统一的字符串，用于热键匹配。"""
+        try:
+            if isinstance(key, keyboard.Key):
+                # 特殊按键 (e.g., Key.ctrl, Key.end)
+                name = key.name.upper() # 'ctrl' -> 'CTRL', 'end' -> 'END'
+                # 映射 pynput 内部名称到 Config 中使用的名称
+                if name.startswith('CTRL'):
+                    return 'CTRL'
+                if name.startswith('ALT'):
+                    return 'ALT'
+                if name.startswith('SHIFT'):
+                    return 'SHIFT'
+                if name.startswith('CMD') or name == 'SUPER': # 'super' is 'win' on linux
+                    return 'WIN'
+                if name == 'ESCAPE':
+                    return 'ESC'
+                
+                # 直接返回大写名称 (e.g., 'END', 'F1')
+                return name
+            elif isinstance(key, keyboard.KeyCode):
+                # 字符按键
+                if key.char:
+                    return key.char.upper() # 'q' -> 'Q'
+        except Exception:
+            pass # 忽略无法处理的按键
+        return None
+
+    def parse_hotkey_to_set(self, hotkey_str):
+        """将 'CtrlQ' 这样的热键字符串解析为 frozenset({'CTRL', 'Q'})。"""
+        keys = hotkey_str.upper().split('')
+        return frozenset(keys)
+
+    def on_press(self, key):
+        """按键按下的回调函数，在此处实现热键匹配和抑制。"""
+        key_str = self.get_key_string(key)
+        if not key_str:
+            return True # 不抑制未知按键
+        
+        self.pressed_keys.add(key_str)
+
+        action_to_run = None
+        suppress = False
+
+        # 1. 检查是否有完整的热键匹配 (使用 == 进行精确匹配)
+        for hotkey_set, action in self.hotkeys_to_check.items():
+            if hotkey_set == self.pressed_keys:
+                action_to_run = action
+                suppress = True
+                break
+        
+        if action_to_run:
+            try:
+                action_to_run() # 执行绑定的动作 (e.g., self.onHide)
+            except Exception as e:
+                print(f"执行热键动作时出错: {e}")
+            
+            # 动作执行后，返回 False 以抑制按键
+            return False
+
+        # 2. 如果没有完整匹配，检查当前按键是否为 *某个* 热键的一部分
+        #    (例如，只按下了 Ctrl)
+        for hotkey_set, action in self.hotkeys_to_check.items():
+            if self.pressed_keys and self.pressed_keys.issubset(hotkey_set):
+                suppress = True
+                break
+        
+        return not suppress # 如果 suppress=True (是热键一部分)，返回 False (抑制)
+                            # 如果 suppress=False (不是热键)，返回 True (不抑制)
+
+    def on_release(self, key):
+        """按键松开的回调函数，用于清理 pressed_keys 集合。"""
+        key_str = self.get_key_string(key)
+        if key_str in self.pressed_keys:
+            try:
+                self.pressed_keys.remove(key_str)
+            except KeyError:
+                pass # 
+        return True # 松开事件总是不抑制
+
+    def ListenerProcess(self):
+        """键盘热键监听进程 (已修改为使用 Listener 以支持抑制)"""
+        try:
+            # `on_press` 和 `on_release` 是这个子进程中 self 对象的实例方法
+            with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
                 self.end_flag = False
                 while listener.running and not self.end_flag:
                     time.sleep(0.1)  # 减少CPU使用率
                 
-                # 如果是因为 end_flag 退出但监听器仍在运行
                 if listener.running and self.end_flag:
                     listener.stop()
                     
-                print("热键监听已停止")
+            print("热键监听已停止")
         except Exception as e:
-            # 热键监听出错时尝试恢复窗口
             self.set_windows_state(1)  # 强制设置状态为显示
             print(f"热键监听出错: {e}")
 
     def BindHotKey(self):
-        hotkeys = {
-            Config.hide_hotkey: self.onHide,
-            Config.close_hotkey: self.Close
-        }
-        hotkeys = tool.keyConvert(hotkeys)
-                
-        self.listener = multiprocessing.Process(target=self.ListenerProcess, daemon=True, args=(hotkeys,), name="Boss-Key热键监听进程")
+        # 清空并重新解析热键
+        self.hotkeys_to_check.clear()
+        
+        hide_hotkey_set = self.parse_hotkey_to_set(Config.hide_hotkey)
+        self.hotkeys_to_check[hide_hotkey_set] = self.onHide
+        
+        close_hotkey_set = self.parse_hotkey_to_set(Config.close_hotkey)
+        self.hotkeys_to_check[close_hotkey_set] = self.Close
+        
+        # `self` (包含了 self.hotkeys_to_check) 会被 pickle 并发送到子进程
+        # 子进程将使用新的 ListenerProcess
+        self.listener = multiprocessing.Process(target=self.ListenerProcess, daemon=True, name="Boss-Key热键监听进程")
         self.listener.start()
 
     def get_windows_state(self):
